@@ -1,15 +1,9 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
 
-## torch tensor 4维的意义 以图片为例
-## 第一维代表 batch-size    第二维代表 channel     第三维代表 row     第四维代表 col
-## tensorflow 4维的意义 以图片为例
-## 第一维代表 batch-size    第二维代表 row         第三维代表 col     第四维代表 channel
-
-## torch padding truple 的含义
-## 第一维代表 增加row   第二维代表 增加col
+## torch tensor (batch_size, channel, row, col)
+## tensorflow (batch_size, row, col, channel)
+## torch padding truple (row, col)
 
 class DNAOnly(nn.Module):
     def __init__(self):
@@ -63,14 +57,3 @@ class DNAOnly(nn.Module):
         return y
     
 
-DNAOnlyNet = DNAOnly()
-loss_function = nn.CrossEntropyLoss()
-optimizer = optim.Adam(lr=1e-4, weight_decay=1e-6)
-
-for epoch in range(200):
-    # need input data
-    optimizer.zero_grad()
-    outputs = DNAOnlyNet()
-    loss = loss_function()
-    loss.backward()
-    optimizer.step()
