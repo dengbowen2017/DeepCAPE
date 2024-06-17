@@ -1,5 +1,5 @@
 # DeepCAPE
-My own implementation of DeepCAPE:A Deep Convolutional Neural Network for the Accurate Prediction of Enhancers
+My own implementation of *DeepCAPE:A Deep Convolutional Neural Network for the Accurate Prediction of Enhancers*
 
 # Preparation 
 1. Please download the data from [here](http://health.tsinghua.edu.cn/openness/anno/info/demos/RegulatoryMechanism/data.tar.gz)
@@ -25,3 +25,5 @@ My own implementation of DeepCAPE:A Deep Convolutional Neural Network for the Ac
         └─Chromosomes 
 ```
 
+# References
+Chen, Shengquan, Mingxin Gan, Hairong Lv, and Rui Jiang. "DeepCAPE: a deep convolutional neural network for the accurate prediction of enhancers." Genomics, Proteomics & Bioinformatics (2021).
