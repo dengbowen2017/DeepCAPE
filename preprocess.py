@@ -19,7 +19,7 @@ for key in keys:
 
 def loadGenomeSequences():
     if os.path.isfile(loaded_genome_data_file_path):
-        print('The whole genome sequences hkl file exists')
+        print('Found the whole genome sequences hkl file')
         sequences = hkl.load(loaded_genome_data_file_path)
     else:
         print('Loading the whole genome data')
@@ -30,7 +30,7 @@ def loadGenomeSequences():
             fa.close()
             sequence = ''.join(sequence)
             sequences[keys[i]] = sequence
-        hkl.dump(sequences, loaded_genome_data_file_path, 'w')
+        hkl.dump(sequences, loaded_genome_data_file_path)
 
     return sequences
 
@@ -67,73 +67,75 @@ def generateNegativeSamplePool(sequences, length):
         fout.close()
         return samples
     
-def IsNewNegativeSample(neg_chrkey, neg_start, neg_end):
+def isNewNegativeSample(neg_chrkey, neg_start, neg_end):
     for item in all_negative_sample[neg_chrkey]:
         if (neg_start >= item[0] and neg_start <= item[1]) or (neg_end >= item[0] and neg_end <= item[1]) or (neg_end >= item[0] and neg_start <= item[0]) or (neg_end >= item[1] and neg_start <= item[1]) : 
             return False
-        else:
-            return True
+    return True
 
 def generateSampleIndexes(cell_name, sequences, ratio):
-    file_path = './processed_data/%s_index_ratio%d.hkl' % (cell_name, ratio)
+    file_path = './processed_data/%s_index_ratio_%d.hkl' % (cell_name, ratio)
 
-    f = open(genome_positive_data_file_path, 'r')
-    positive_samples = f.readlines()
-    f.close()
+    if os.path.isfile(file_path):
+        print("Found corresponding index file")
+        pos_index, neg_index = hkl.load(file_path)
+        return pos_index, neg_index
+    else:
+        f = open(genome_positive_data_file_path, 'r')
+        positive_samples = f.readlines()
+        f.close()
 
-    pos_index = list()
-    neg_index = list()
+        pos_index = list()
+        neg_index = list()
 
-    lens = list()
-    for sample in positive_samples:
-        _, start, end = sample.split('\t')[0:3]
-        lens.append(int(end) - int(start))
-    lens = np.array(lens)
-    bot = np.percentile(lens, 5)
-    top = np.percentile(lens, 95)
+        lens = list()
+        for sample in positive_samples:
+            _, start, end = sample.split('\t')[0:3]
+            lens.append(int(end) - int(start))
+        lens = np.array(lens)
+        bot = np.percentile(lens, 5)
+        top = np.percentile(lens, 95)
 
-    for i, sample in enumerate(positive_samples):
-        chrkey, start, end = sample.split('\t')[0:3]
-        start = int(start)
-        end = int(end)
-        sequence = sequences[chrkey][start: end]
-        seq_length = end - start
-        if ('n' not in sequence) and ('N' not in sequence) and seq_length > bot and seq_length < top:
-            pos_index.append(['%s%05d' % (cell_name, i), chrkey, start, end])
-            sequence = sequence.upper()
-            pos_gc = 1.0 * (sequence.count('G') + sequence.count('C')) / seq_length
-            negative_samples = generateNegativeSamplePool(sequences, seq_length)
+        for i, sample in enumerate(positive_samples):
+            chrkey, start, end = sample.split('\t')[0:3]
+            start = int(start)
+            end = int(end)
+            sequence = sequences[chrkey][start: end]
+            seq_length = end - start
+            if ('n' not in sequence) and ('N' not in sequence) and seq_length > bot and seq_length < top:
+                pos_index.append(['%s_%d' % (cell_name, i), chrkey, start, end])
+                sequence = sequence.upper()
+                pos_gc = 1.0 * (sequence.count('G') + sequence.count('C')) / seq_length
+                negative_samples = generateNegativeSamplePool(sequences, seq_length)
 
-            abs_gc = list()
-            for neg_sample in negative_samples:
-                neg_gc = neg_sample.split('\t')[3]
-                abs_gc.append(abs(pos_gc - neg_gc))
-            sorted_ind = np.argsort(np.array(abs_gc)).tolist()
+                abs_gc = list()
+                for neg_sample in negative_samples:
+                    neg_gc = neg_sample.split('\t')[3]
+                    abs_gc.append(abs(pos_gc - float(neg_gc)))
+                sorted_ind = np.argsort(np.array(abs_gc)).tolist()
 
-            count = 0
-            for ind in sorted_ind:
-                neg_chrkey, neg_start, neg_end = negative_samples[ind].split('\t')[0:3]
-                neg_start = int(neg_start)
-                neg_end = int(neg_end)
-                if IsNewNegativeSample(neg_chrkey, neg_start, neg_end):
-                    count += 1
-                    all_negative_sample[neg_chrkey].append([neg_start, neg_end])
-                    neg_index.append(['neg%05d_%d' % (i, count), neg_chrkey, neg_start, neg_end])
-                    if count == ratio:
-                        break
-            if count != ratio:
-                 print('Error: No enough negative samples')
+                count = 0
+                for ind in sorted_ind:
+                    neg_chrkey, neg_start, neg_end = negative_samples[ind].split('\t')[0:3]
+                    neg_start = int(neg_start)
+                    neg_end = int(neg_end)
+                    if isNewNegativeSample(neg_chrkey, neg_start, neg_end):
+                        count += 1
+                        all_negative_sample[neg_chrkey].append([neg_start, neg_end])
+                        neg_index.append(['neg_%d_%d' % (i, count), neg_chrkey, neg_start, neg_end])
+                        if count == ratio:
+                            break
+                if count != ratio:
+                    print('Error: No enough negative samples')
+                    return
 
-    print('Totally {0} enhancers and {1} negative samples.'.format(len(pos_index), len(neg_index)))
-    hkl.dump([pos_index, neg_index], file_path)
-    return [pos_index, neg_index]
+        print('Totally {0} enhancers and {1} negative samples.'.format(len(pos_index), len(neg_index)))
+        hkl.dump([pos_index, neg_index], file_path)
+        return pos_index, neg_index
 
 def preprocessing():
     sequences = loadGenomeSequences()
-    generateNegativeSamplePool(sequences)
-    # generate positive samples
-
-    # generate corresponding negative samples
+    pos_index, neg_index = generateSampleIndexes('epithelial_cell_of_esophagus', sequences, 5)
 
 # temp
 if __name__ == "__main__":
