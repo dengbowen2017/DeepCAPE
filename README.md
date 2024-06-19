@@ -4,8 +4,8 @@ My own implementation of *DeepCAPE:A Deep Convolutional Neural Network for the A
 # Preparation 
 1. Please download the data from [here](http://health.tsinghua.edu.cn/openness/anno/info/demos/RegulatoryMechanism/data.tar.gz)
 2. Make a new folder "raw_data" under "DeepCAPE"
-3. extract the downloaded file and move the content to "raw_data"
-4. the file structure will be looked like this
+3. Extract the downloaded file and move the content to "raw_data"
+4. The file structure will be looked like this
 
 ```
 └─DeepCAPE
