@@ -1,4 +1,4 @@
 .venv
 processed_data
 raw_data
-negative_sample_pool
+__pycache__

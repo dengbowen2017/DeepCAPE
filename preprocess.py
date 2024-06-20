@@ -6,6 +6,8 @@ from sklearn.model_selection import KFold
 class Preprocessor:
     cell_name = 'epithelial_cell_of_esophagus'
     ratio = 5
+    fragment_length = 300
+    k = 5
 
     all_genome_sequences_file_path = './raw_data/Chromosomes/'
     all_negative_sample_indexes_file_path = './raw_data/res_complement.bed'
@@ -18,10 +20,19 @@ class Preprocessor:
     all_negative_sample_indexes = list()
     selected_negative_sample_indexes = dict()
 
+    train_sample_file_paths = list()
+    test_sample_file_paths = list()
+    test_pos_id_file_paths = list()
+    test_neg_id_file_paths = list()
+
     def __init__(self):
-        os.mkdir('./processed_data')
-        os.mkdir('./processed_data/negative_sample_pool')
-        os.mkdir('./processed_data/dataset')
+        # make folders
+        if os.path.isdir('./processed_data') == False:
+            os.mkdir('./processed_data')
+            os.mkdir('./processed_data/negative_sample_pool')
+            os.mkdir('./processed_data/dataset')
+        if os.path.isdir('./processed_data/dataset/ratio_%d' % (self.ratio)) == False:
+            os.mkdir('./processed_data/dataset/ratio_%d' % (self.ratio))
 
         # init selected_negative_sample_indexes
         chrs = list(range(1, 23))
@@ -58,7 +69,7 @@ class Preprocessor:
     
     def calculateGCContent(self, sequence:str, length:int):
         seq = sequence.upper()
-        gc_content = (sequence.count('G') + sequence.count('C')) / length
+        gc_content = (seq.count('G') + seq.count('C')) / length
         return seq, gc_content
     
 
@@ -141,8 +152,8 @@ class Preprocessor:
                     sorted_indexes = np.argsort(np.array(abs_gc)).tolist()
 
                     count = 0
-                    for i in sorted_indexes:
-                        neg_chrkey, neg_start, neg_end = negative_sample_indexes[i].split('\t')[0:3]
+                    for ind in sorted_indexes:
+                        neg_chrkey, neg_start, neg_end = negative_sample_indexes[ind].split('\t')[0:3]
                         neg_start = int(neg_start)
                         neg_end = int(neg_end)
                         if self.isNewNegativeSampleIndex(neg_chrkey, neg_start, neg_end):
@@ -168,7 +179,7 @@ class Preprocessor:
             return pos_allsplits, neg_allsplits
         else:
             print('Splitting the indexes into train and test parts')
-            kf = KFold(n_splits=5, shuffle=True, random_state=0)
+            kf = KFold(n_splits=self.k, shuffle=True, random_state=0)
             pos_sample_indexes_num = len(pos_sample_indexes)            
             pos_allsplits = list()
             neg_allsplits = list()
@@ -190,7 +201,7 @@ class Preprocessor:
             return pos_allsplits, neg_allsplits
 
 
-    def dataAugmentation(self, sequences, indexes, length):
+    def dataAugmentation(self, indexes, length:int):
         results = list()
         for index in indexes:
             sample_id, chrkey, startpos, endpos = index[0:4]
@@ -202,17 +213,98 @@ class Preprocessor:
                 for offset in range(0, length - orig_length + 1):
                     start = startpos - offset
                     end = start + length
-                    sequence = sequences[chrkey][start:end]
-                    if ('n' not in sequence) and ('N' not in sequence):
+                    sequence, legal = self.checkSequence(chrkey, start, end)
+                    if legal:
                         results.append([sample_id, chrkey, start, end, sequence])
             
             else:
                 for offset in range(0, orig_length - length + 1):
                     start = startpos + offset
                     end = start + length
-                    sequence = sequences[chrkey][start:end]
-                    if ('n' not in sequence) and ('N' not in sequence):
+                    sequence, legal = self.checkSequence(chrkey, start, end)
+                    if legal:
                         results.append([sample_id, chrkey, start, end, sequence])
 
         print('Data augmentation: from {0} samples to {1} samples'.format(len(indexes), len(results)))
         return results
+    
+    def toBedFile(self, indexes, file_path):
+        print('Saving sequences into %s' % file_path)
+        f = open(file_path, 'w')
+        for index in indexes:
+            if len(index) == 4 or len(index) == 5:
+                f.write('{0[1]}\t{0[2]}\t{0[3]}\t{0[0]}\t.\t.\n'.format(index))
+            else:
+                raise ValueError('index not in correct format!')
+        f.close()
+
+    def oneHotEncoding(self, seq):
+        acgt2num = {
+            'A': 0,
+            'C': 1,
+            'G': 2,
+            'T': 3
+        }
+
+        seq = seq.upper()
+        h = 4
+        w = len(seq)
+        mat = np.zeros((h, w), dtype='float32')  # True or False in mat
+        for i in range(w):
+            mat[acgt2num[seq[i]], i] = 1.
+        return mat.reshape((1, -1))
+    
+    
+    def generateSamples(self):
+        pos_indexes, neg_indexes = self.generateSampleIndexes()
+        pos_allsplits, neg_allsplits = self.train_test_split(pos_indexes, neg_indexes)
+        for i in range(self.k):
+            pos_train_indexes, pos_test_indexes = pos_allsplits[i]
+            neg_train_indexes, neg_test_indexes = neg_allsplits[i]
+
+            pos_train_sample_indexes_file_path = './processed_data/dataset/ratio_%d/%s_positive_train_sample_indexes_fold_%d.bed' % (self.ratio, self.cell_name, i)
+            pos_test_sample_indexes_file_path = './processed_data/dataset/ratio_%d/%s_positive_test_sample_indexes_fold_%d.bed' % (self.ratio, self.cell_name, i)
+            neg_train_sample_indexes_file_path = './processed_data/dataset/ratio_%d/%s_negative_train_sample_indexes_fold_%d.bed' % (self.ratio, self.cell_name, i)
+            neg_test_sample_indexes_file_path = './processed_data/dataset/ratio_%d/%s_negative_test_sample_indexes_fold_%d.bed' % (self.ratio, self.cell_name, i)
+
+            pos_train = self.dataAugmentation(pos_train_indexes, self.fragment_length)
+            pos_test = self.dataAugmentation(pos_test_indexes, self.fragment_length)
+            neg_train = self.dataAugmentation(neg_train_indexes, self.fragment_length)
+            neg_test = self.dataAugmentation(neg_test_indexes, self.fragment_length)
+
+            self.toBedFile(pos_train, pos_train_sample_indexes_file_path)
+            self.toBedFile(pos_test, pos_test_sample_indexes_file_path)
+            self.toBedFile(neg_train, neg_train_sample_indexes_file_path)
+            self.toBedFile(neg_test, neg_test_sample_indexes_file_path)
+
+            train_y = [1] * len(pos_train) + [0] * len(neg_train)
+            train_y = np.array(train_y, dtype='float32')
+            train_X_pos = np.vstack([self.oneHotEncoding(item[-1]) for item in pos_train])
+            train_X_neg = np.vstack([self.oneHotEncoding(item[-1]) for item in neg_train])
+            train_X = np.vstack((train_X_pos, train_X_neg))
+
+            test_y = [1] * len(pos_test) + [0] * len(neg_test)
+            test_y = np.array(test_y, dtype='float32')
+            test_pos_ids = [item[0] for item in pos_test]
+            test_neg_ids = [item[0] for item in neg_test]
+            test_X_pos = np.vstack([self.oneHotEncoding(item[-1]) for item in pos_test])
+            test_X_neg = np.vstack([self.oneHotEncoding(item[-1]) for item in neg_test])
+            test_X = np.vstack((test_X_pos, test_X_neg))
+
+            train_samples_file_path = './processed_data/dataset/ratio_%d/%s_train_samples_fold_%d.hkl' % (self.ratio, self.cell_name, i)
+            test_samples_file_path = './processed_data/dataset/ratio_%d/%s_test_samples_fold_%d.hkl' % (self.ratio, self.cell_name, i)
+            test_pos_ids_file_path = './processed_data/dataset/ratio_%d/%s_test_pos_ids_fold_%d.hkl' % (self.ratio, self.cell_name, i)
+            test_neg_ids_file_path = './processed_data/dataset/ratio_%d/%s_test_neg_ids_fold_%d.hkl' % (self.ratio, self.cell_name, i)
+
+            self.train_sample_file_paths.append(train_samples_file_path)
+            self.test_sample_file_paths.append(test_samples_file_path)
+            self.test_pos_id_file_paths.append(test_pos_ids_file_path)
+            self.test_neg_id_file_paths.append(test_neg_ids_file_path)
+
+            hkl.dump((train_X, train_y), train_samples_file_path)
+            hkl.dump((test_X, test_y), test_samples_file_path)
+            hkl.dump(test_pos_ids, test_pos_ids_file_path)
+            hkl.dump(test_neg_ids, test_neg_ids_file_path)
+
+            break
+

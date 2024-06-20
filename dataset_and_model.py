@@ -1,9 +1,24 @@
 import torch
 import torch.nn as nn
+import hickle as hkl
+from torch.utils.data import Dataset
 
 ## torch tensor (batch_size, channel, row, col)
 ## tensorflow (batch_size, row, col, channel)
 ## torch padding truple (row, col)
+
+class MyDataSet(Dataset):
+    def __init__(self, file_path, length=300):
+        X, y = hkl.load(file_path)
+        self.X = X.reshape(-1, 1, 4, length)
+        self.y = y.reshape(-1, 1)
+
+    def __getitem__(self, index):
+        return self.X[index], self.y[index]
+
+    def __len__(self):
+        return len(self.X)
+
 
 class DNAOnly(nn.Module):
     def __init__(self):
@@ -12,7 +27,7 @@ class DNAOnly(nn.Module):
         self.conv2 = nn.Conv2d(128, 64, kernel_size=1)
         self.conv3 = nn.Conv2d(64, 64, kernel_size=(1,3), padding=(0,1))
         self.conv4 = nn.Conv2d(64, 128, kernel_size=1)
-        self.conv5 = nn.Conv2d(64, 64, kernel_size=(1,3), padding=(0,1))
+        self.conv5 = nn.Conv2d(128, 64, kernel_size=(1,3), padding=(0,1))
         self.conv6 = nn.Conv2d(64, 64, kernel_size=(1,3), padding=(0,1))
 
         self.conv7 = nn.Conv2d(64, 128, kernel_size=1)
