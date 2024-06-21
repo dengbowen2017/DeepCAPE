@@ -23,5 +23,15 @@ My own implementation of *DeepCAPE:A Deep Convolutional Neural Network for the A
         └─Chromosomes 
 ```
 
+# Requirements
+- keras2
+- numpy
+- hickle
+- tensorflow
+- pytorch
+
+# How to use
+For now, there is something wrong with the pytorch version. Please use keras version instead.
+
 # References
 Chen, Shengquan, Mingxin Gan, Hairong Lv, and Rui Jiang. "DeepCAPE: a deep convolutional neural network for the accurate prediction of enhancers." Genomics, Proteomics & Bioinformatics (2021).
