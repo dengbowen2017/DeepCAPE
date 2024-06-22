@@ -1,26 +1,29 @@
-import hickle as hkl
-import numpy as np
-from keras.callbacks import EarlyStopping, ModelCheckpoint
-from keras.optimizers.legacy import Adam
+import keras
+from keras import callbacks
+from keras import optimizers
 
-from keras_model import model
+from keras_model import DeepCAPE_only_DNA
 from preprocess import Preprocessor
+
+import numpy as np
+from sklearn import metrics
 
 # preprocess data
 preprocess = Preprocessor()
-preprocess.generateSamples()
-
-# create dataset
-train_X_seq, train_y = hkl.load(preprocess.train_sample_file_paths[0])
-train_X_seq = train_X_seq.reshape(-1, 4, 300, 1)
-train_y = train_y.reshape(-1, 1)
-indice = np.arange(train_y.shape[0])
-np.random.shuffle(indice)
-train_X_seq  = train_X_seq[indice]
-train_y = train_y[indice]
+X_train, X_test, y_train, y_test = preprocess.generateSamples()
 
 # train model
-early_stopping = EarlyStopping(monitor='val_loss', verbose=0, patience=3, mode='min')
-adam = Adam(lr=1e-4, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=1e-6)
-model.compile(loss='binary_crossentropy', optimizer=adam, metrics=['accuracy'])
-model.fit(train_X_seq, train_y, batch_size=128, epochs=30, validation_split=0.1, callbacks=[early_stopping])
+early_stopping = callbacks.EarlyStopping(monitor='val_loss', verbose=0, patience=3, mode='min')
+save_best = callbacks.ModelCheckpoint('./processed_data/model_DNA_only.weights.h5', save_best_only=True, save_weights_only=True)
+adam = optimizers.Adam(learning_rate=1e-4, epsilon=1e-08, weight_decay=1e-6)
+DeepCAPE_only_DNA.compile(loss='binary_crossentropy', optimizer=adam, metrics=['accuracy'])
+DeepCAPE_only_DNA.fit(X_train, y_train, batch_size=128, epochs=30, validation_split=0.1, callbacks=[early_stopping, save_best])
+
+# predict
+y_pred = DeepCAPE_only_DNA.predict(X_test)
+y_pred = np.array(np.array(y_pred) > 0.5, dtype='int32')
+y_test = np.array(y_test, dtype='int32')
+auROC = metrics.roc_auc_score(y_test, y_pred)
+print('auROC = {}'.format(auROC))
+auPR = metrics.average_precision_score(y_test, y_pred)
+print('auPR  = {}'.format(auPR))

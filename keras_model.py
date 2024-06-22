@@ -1,35 +1,78 @@
-from keras.models import Model
-from keras.layers import Input, Dense, Dropout, Flatten, Conv2D, MaxPooling2D, Concatenate
+import keras
+from keras import layers
+import hickle as hkl
 
-input_seq  = Input(shape=(4, 300, 1))
-seq_conv1_ = Conv2D(128, (4, 8), activation='relu',padding='valid')
-seq_conv1  = seq_conv1_(input_seq)
-seq_conv2_ = Conv2D(64, (1, 1), activation='relu',padding='same')
-seq_conv2  = seq_conv2_(seq_conv1)
-seq_conv3_ = Conv2D(64, (1, 3), activation='relu',padding='same')
-seq_conv3  = seq_conv3_(seq_conv2)
-seq_conv4_ = Conv2D(128, (1, 1), activation='relu',padding='same')
-seq_conv4  = seq_conv4_(seq_conv3)
-seq_pool1  = MaxPooling2D(pool_size=(1, 2))(seq_conv4)
-seq_conv5_ = Conv2D(64, (1, 3), activation='relu',padding='same')
-seq_conv5  = seq_conv5_(seq_pool1)
-seq_conv6_ = Conv2D(64, (1, 3), activation='relu',padding='same')
-seq_conv6  = seq_conv6_(seq_conv5)
-#
-seq_conv7_ = Conv2D(128, (1, 1), activation='relu',padding='same')
-seq_conv7  = seq_conv7_(seq_conv6)
-#
-seq_pool2  = MaxPooling2D(pool_size=(1, 2))(seq_conv7)
-merge_seq_conv2_conv3 = Concatenate(axis=-1)([seq_conv2, seq_conv3])
-merge_seq_conv5_conv6 = Concatenate(axis=-1)([seq_conv5, seq_conv6])
-x = Concatenate(axis=2)([seq_conv1, merge_seq_conv2_conv3, merge_seq_conv5_conv6, seq_pool2])
-x = Flatten()(x)
-dense1_ = Dense(512, activation='relu')
-dense1  = dense1_(x)
-dense2  = Dense(256, activation='relu')(dense1)
-x = Dropout(0.5)(dense2)
-dense3 = Dense(128, activation='relu')(x)
-pred_output = Dense(1, activation='sigmoid')(dense3)
+# Something about Concatenate
+# Since Concatenate will remove axis whose value equals to 1, when using axis=2 in this case, you will get error.
+# Because the original shape (None, 1, n, 128) will be changed to (None, n, 128), the axis=2 will refer to 128 instead of n and you will get a error
+# In this case, you should use axis=-2 to avoid this problem
 
-# Keras model
-model = Model(inputs=[input_seq], outputs=[pred_output])
+# DNA module
+DNA_input = layers.Input(shape=(4, 300, 1))
+DNA_conv1 = layers.Conv2D(128, (4, 8), padding='valid', activation='relu')(DNA_input)
+DNA_conv2 = layers.Conv2D(64, (1, 1), padding='same', activation='relu')(DNA_conv1)
+DNA_conv3 = layers.Conv2D(64, (1, 3), padding='same', activation='relu')(DNA_conv2)
+DNA_conv4 = layers.Conv2D(128, (1, 1), padding='same', activation='relu')(DNA_conv3)
+DNA_pool1 = layers.MaxPool2D((1, 2))(DNA_conv4)
+DNA_conv5 = layers.Conv2D(64, (1, 3), padding='same', activation='relu')(DNA_pool1)
+DNA_conv6 = layers.Conv2D(64, (1, 3), padding='same', activation='relu')(DNA_conv5)
+
+DNA_conv7 = layers.Conv2D(128, (1, 1), padding='same', activation='relu')(DNA_conv6)
+DNA_pool2 = layers.MaxPool2D((1, 2))(DNA_conv7)
+
+concat_DNA_conv2_conv3 = layers.Concatenate(axis=-1)([DNA_conv2, DNA_conv3])
+concat_DNA_conv5_conv6 = layers.Concatenate(axis=-1)([DNA_conv5, DNA_conv6])
+concat_DNA = layers.Concatenate(axis=-2)([DNA_conv1, concat_DNA_conv2_conv3, concat_DNA_conv5_conv6, DNA_pool2])
+
+x = layers.Flatten()(concat_DNA)
+x = layers.Dense(512, activation='relu')(x)
+x = layers.Dense(256, activation='relu')(x)
+x = layers.Dropout(0.5)(x)
+x = layers.Dense(128, activation='relu')(x)
+pred_output = layers.Dense(1, activation='sigmoid')(x)
+
+DeepCAPE_only_DNA = keras.Model(DNA_input, pred_output, name='DeepCAPE_only_DNA')
+
+# DNase module
+DNase_input = layers.Input(shape=(1, 300, 1))
+DNase_conv1 = layers.Conv2D(128, (1, 8), padding='valid', activation='relu')(DNase_input)
+DNase_conv2 = layers.Conv2D(64, (1, 1), padding='same', activation='relu')(DNase_conv1)
+DNase_conv3 = layers.Conv2D(64, (1, 3), padding='same', activation='relu')(DNase_conv2)
+DNase_conv4 = layers.Conv2D(128, (1, 1), padding='same', activation='relu')(DNase_conv3)
+DNase_pool1 = layers.MaxPool2D((1, 2))(DNase_conv4)
+DNase_conv5 = layers.Conv2D(64, (1, 3), padding='same', activation='relu')(DNase_pool1)
+DNase_conv6 = layers.Conv2D(64, (1, 3), padding='same', activation='relu')(DNase_conv5)
+
+DNase_conv7 = layers.Conv2D(128, (1, 1), padding='same', activation='relu')(DNase_conv6)
+DNase_pool2 = layers.MaxPool2D((1, 2))(DNase_conv7)
+
+concat_DNase_conv2_conv3 = layers.Concatenate(axis=-1)([DNase_conv2, DNase_conv3])
+concat_DNase_conv5_conv6 = layers.Concatenate(axis=-1)([DNase_conv5, DNase_conv6])
+concat_DNase = layers.Concatenate(axis=-2)([DNase_conv1, concat_DNase_conv2_conv3, concat_DNase_conv5_conv6, DNase_pool2])
+
+x = layers.Flatten()(concat_DNase)
+x = layers.Dense(512, activation='relu')(x)
+x = layers.Dense(256, activation='relu')(x)
+x = layers.Dropout(0.5)(x)
+x = layers.Dense(128, activation='relu')(x)
+pred_output = layers.Dense(1, activation='sigmoid')(x)
+
+DeepCAPE_only_DNase = keras.Model(DNase_input, pred_output, name='DeepCAPE_only_DNase')
+
+# DeepCAPE
+DNA_pool2 = layers.MaxPool2D((1, 2))(DNA_conv6)
+DNase_pool2 = layers.MaxPool2D((1, 2))(DNase_conv6)
+concat_DNA_DNase_pool2 = layers.Concatenate(axis=-1)([DNA_pool2, DNase_pool2])
+concat_DNA_DNase = layers.Concatenate(axis=-2)([DNA_conv1, concat_DNA_conv2_conv3, concat_DNA_conv5_conv6, concat_DNA_DNase_pool2, concat_DNase_conv5_conv6, concat_DNase_conv2_conv3, DNase_conv1])
+
+x = layers.Flatten()(concat_DNA_DNase)
+x = layers.Dense(512, activation='relu')(x)
+x = layers.Dense(256, activation='relu')(x)
+x = layers.Dropout(0.5)(x)
+x = layers.Dense(128, activation='relu')(x)
+pred_output = layers.Dense(1, activation='sigmoid')(x)
+
+DeepCAPE = keras.Model([DNA_input, DNase_input], pred_output, name='DeepCAPE')
+
+
+DeepCAPE_only_DNA.summary()
