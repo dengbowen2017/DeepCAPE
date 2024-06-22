@@ -24,11 +24,12 @@ My own implementation of *DeepCAPE:A Deep Convolutional Neural Network for the A
 ```
 
 # Requirements
-- keras2
 - numpy
 - hickle
+- keras3
 - tensorflow
 - pytorch
+- sklearn
 
 # How to use
 For now, there is something wrong with the pytorch version. Please use keras version instead.
