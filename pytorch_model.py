@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import hickle as hkl
 from torch.utils.data import Dataset
 
 ## torch tensor (batch_size, channel, row, col)
@@ -8,10 +7,9 @@ from torch.utils.data import Dataset
 ## torch padding truple (row, col)
 
 class MyDataSet(Dataset):
-    def __init__(self, file_path, length=300):
-        X, y = hkl.load(file_path)
-        self.X = X.reshape(-1, 1, 4, length)
-        self.y = y.reshape(-1, 1)
+    def __init__(self, X, y):
+        self.X = X
+        self.y = y
 
     def __getitem__(self, index):
         return self.X[index], self.y[index]

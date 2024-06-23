@@ -21,8 +21,6 @@ DeepCAPE_only_DNA.fit(X_train, y_train, batch_size=128, epochs=30, validation_sp
 
 # predict
 y_pred = DeepCAPE_only_DNA.predict(X_test)
-y_pred = np.array(np.array(y_pred) > 0.5, dtype='int32')
-y_test = np.array(y_test, dtype='int32')
 auROC = metrics.roc_auc_score(y_test, y_pred)
 print('auROC = {}'.format(auROC))
 auPR = metrics.average_precision_score(y_test, y_pred)

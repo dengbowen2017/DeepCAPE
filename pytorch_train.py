@@ -5,13 +5,14 @@ from torch.utils.data import DataLoader
 from pytorch_model import MyDataSet, DNAModule
 from preprocess import Preprocessor
 
+from sklearn import metrics
 
 # preprocess data
 preprocess = Preprocessor()
-preprocess.generateSamples()
+X_train, X_test, y_train, y_test = preprocess.generateSamples()
 
 # create dataset
-train_set = MyDataSet(preprocess.train_sample_file_paths[0])
+train_set = MyDataSet(X_train, y_train)
 train_data = DataLoader(train_set, batch_size=128, shuffle=True)
 
 # create model
@@ -34,3 +35,6 @@ for epoch in range(30):
         if i % 10 == 9:  
             print('[%d, %5d] loss: %.3f' % (epoch + 1, i + 1, running_loss / 10))
             running_loss = 0.0
+
+# test model
+
