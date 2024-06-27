@@ -10,10 +10,12 @@ My own implementation of *DeepCAPE:A Deep Convolutional Neural Network for the A
 ```
 └─DeepCAPE
     │  .gitignore 
-    │  dataset_and_model.py 
+    │  keras_model.py
+    |  keras_train.py
     │  preprocess.py 
+    │  pytorch_model.py
+    |  pytorch_train.py
     │  README.md 
-    │  train.py 
     │      
     └─raw_data 
         │  epithelial_cell_of_esophagus_differentially_expressed_enhancers.bed 
