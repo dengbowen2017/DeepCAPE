@@ -34,8 +34,7 @@ My own implementation of *DeepCAPE:A Deep Convolutional Neural Network for the A
 - sklearn
 
 # How to use
-For now, there is something wrong with the pytorch version. Please use keras version instead.
-Run *keras_train.py* and you will get the results.
+Run *keras_train.py* or *pytorch_train.py*
 
 # References
 Chen, Shengquan, Mingxin Gan, Hairong Lv, and Rui Jiang. "DeepCAPE: a deep convolutional neural network for the accurate prediction of enhancers." Genomics, Proteomics & Bioinformatics (2021).

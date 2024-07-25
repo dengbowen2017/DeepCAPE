@@ -8,7 +8,7 @@ from torch.utils.data import Dataset
 
 class MyDataSet(Dataset):
     def __init__(self, X, y):
-        self.X = X
+        self.X = X.reshape(-1, 1, 4, 300)
         self.y = y
 
     def __getitem__(self, index):
@@ -51,7 +51,7 @@ class DNAModule(nn.Module):
             nn.ReLU()
         )
         self.pool2 = nn.MaxPool2d(kernel_size=(1, 2))
-        self.fc1 = None
+        self.fc1 = nn.LazyLinear(512)
         self.fc2 = nn.Sequential(
             nn.Linear(512, 256),
             nn.ReLU()
@@ -82,14 +82,6 @@ class DNAModule(nn.Module):
 
         y = torch.concat((c1, concat_c2_c3, concat_c5_c6, p2), dim=-1)
         y = torch.flatten(y, start_dim=1)
-
-        if self.fc1 is None:
-            in_features = y.size(1)
-            self.fc1 = nn.Sequential(
-                nn.Linear(in_features, 512),
-                nn.ReLU()
-            )
-        
         y = self.fc1(y)
         y = self.fc2(y)
         y = self.drop(y)
